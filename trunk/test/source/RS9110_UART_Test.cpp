@@ -27,25 +27,26 @@ void RS9110_UART_Test::tearDown ()
 CPPUNIT_TEST_SUITE_REGISTRATION(RS9110_UART_Test);
 
 
-void RS9110_UART_Test::CompareStream (const char *stream)
+void RS9110_UART_Test::CompareStream (const char *stream, unsigned int size)
 {
     char *expected  = (char *) stream;
     char *actual    = mockFile->GetBufferData();
-    char assertMsg[1024] = {0};
 
-    //printf("%s (%d)", mockFile->GetBufferData(), mockFile->GetBufferSize());
+    //printf("%s (%d) \n%s (%d)", mockFile->GetBufferData(), mockFile->GetBufferSize(), stream, strlen(stream));
 
-    CPPUNIT_ASSERT(strlen(stream) == mockFile->GetBufferSize());
-
-    int rtn = strcmp(expected, actual);
-
-    /* We do it this way to avoid the "\r\n" at the end of both expected and actual streams */
-    strcpy(assertMsg, "[EXPECTED] ");
-    strcpy(&assertMsg[strlen(assertMsg)], expected);
-    strcpy(&assertMsg[strlen(assertMsg) - 2], " != [ACTUAL] ");
-    strcpy(&assertMsg[strlen(assertMsg) - 2], actual);
-    
-    CPPUNIT_ASSERT_MESSAGE(assertMsg, rtn == 0);
+    int rtn;
+    if(size == 0)
+    {
+        CPPUNIT_ASSERT(strlen(stream) == mockFile->GetBufferSize());
+        rtn = strcmp(expected, actual);
+    }
+    else
+    {
+        CPPUNIT_ASSERT(size == mockFile->GetBufferSize());
+        rtn = memcmp(expected, actual, size);
+    }
+   
+    CPPUNIT_ASSERT(rtn == 0);
 }
 
 
@@ -477,12 +478,53 @@ void RS9110_UART_Test::SendTest ()
     unsigned int BUFFER_SIZE = 2000;
     char *data = new char[BUFFER_SIZE];
     char *result = new char[BUFFER_SIZE];
+    int hdrLen = 0;
 
 
-    iRtn = rs->Send(1, "123.123.123.123", 12345, "A", 1);
+    for(int i = 0; i < BUFFER_SIZE; i++)
+    {
+        data[i]     = 0;
+        result[i]   = 0;
+    }
+
+    iRtn = rs->Send(1, RS9110_UART::SOCKET_UDP, "123.123.123.123", 12345, "A", 1);
     CPPUNIT_ASSERT(iRtn == 1);
     CompareStream("AT+RSI_SND=1,0,123.123.123.123,12345,A\r\n");
 
+    data[0] = (char) 0x0D; data[1] = (char) 0x0A;
+    data[2] = (char) 0xDB;
+    data[3] = (char) 0x0D; data[4] = (char) 0x0A;
+    data[5] = 'H'; data[6] = 'o'; data[7] = 'l'; data[8] = 'a'; data[9] = '\0';
+    data[10] = (char) 0xDB;
+    iRtn = rs->Send(1, RS9110_UART::SOCKET_UDP, "123.123.123.123", 12345, data, 11);
+    CPPUNIT_ASSERT(iRtn == 11);
+    strcpy(result, "AT+RSI_SND=1,0,123.123.123.123,12345,");
+    hdrLen = strlen(result);
+    data[0] = (char) 0xDB; data[1] = (char) 0xDC;
+    data[2] = (char) 0xDB; data[3] = (char) 0xDD;
+    data[4] = (char) 0xDB; data[5] = (char) 0xDC;
+    data[6] = 'H'; data[7] = 'o'; data[8] = 'l'; data[9] = 'a'; data[10] = '\0';
+    data[11] = (char) 0xDB; data[12] = (char) 0xDD;
+    data[13] = (char) 0x0D; data[14] = (char) 0x0A;
+    memcpy(&result[hdrLen], data, 15);
+    CompareStream(result, (hdrLen + 15));
+    
+    for(int i = 0; i < RS9110_UART::MAX_SEND_DATA_SIZE_UDP; i++) data[i] = (char) 0xDB;
+    iRtn = rs->Send(1, RS9110_UART::SOCKET_UDP, "123.123.123.123", 12345, data, RS9110_UART::MAX_SEND_DATA_SIZE_UDP);
+    CPPUNIT_ASSERT(iRtn == (RS9110_UART::MAX_SEND_DATA_SIZE_UDP / 2));
+    strcpy(result, "AT+RSI_SND=1,0,123.123.123.123,12345,");
+    hdrLen = strlen(result);
+    int i = 0;
+    while(i < RS9110_UART::MAX_SEND_DATA_SIZE_UDP)
+    {
+        data[i++] = (char) 0xDB;
+        data[i++] = (char) 0xDD;
+    }
+
+    data[RS9110_UART::MAX_SEND_DATA_SIZE_UDP] = (char) 0x0D; data[RS9110_UART::MAX_SEND_DATA_SIZE_UDP + 1] = (char) 0x0A;
+    memcpy(&result[hdrLen], data, RS9110_UART::MAX_SEND_DATA_SIZE_UDP + 2);
+    CompareStream(result, (hdrLen + RS9110_UART::MAX_SEND_DATA_SIZE_UDP + 2));
+    
     delete data;
     delete result;
 }
