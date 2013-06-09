@@ -11,34 +11,34 @@ static const char *COMMAND[] =
 {
     "AT+RSI_BAND=",
     "AT+RSI_INIT",
+    "AT+RSI_NUMSCAN?",
+    "AT+RSI_NUMSCAN=",
     "AT+RSI_SCAN=",
+    "AT+RSI_NEXTSCAN",
+    "AT+RSI_BSSID?",
+    "AT+RSI_NWTYPE?",
     "AT+RSI_NETWORK=",
     "AT+RSI_PSK=",
     "AT+RSI_AUTHMODE=",
     "AT+RSI_JOIN=",
-	"AT+RSI_RESET",
-	"AT+RSI_IPCONF=",
-	"AT+RSI_CLS=",
-	"AT+RSI_TCP=",
-	"AT+RSI_CFGSAVE",
-	"AT+RSI_CFGENABLE=",
-	"AT+RSI_CFGGET?",
 	"AT+RSI_DISASSOC",
-	"AT+RSI_FWVERSION?",
-	"AT+RSI_SEND=",
-    "AT+RSI_MAC?",
-    "AT+RSI_RSSI?",
-    "AT+RSI_NWPARAMS?",
+	"AT+RSI_IPCONF=",
+	"AT+RSI_TCP=",
+    "AT+RSI_LUDP=",
     "AT+RSI_UDP=",
     "AT+RSI_LTCP=",
-    "AT+RSI_LUDP=",
     "AT+RSI_CTCP=",
-    "AT+RSI_NUMSCAN?",
-    "AT+RSI_NUMSCAN=",
-    "AT+RSI_NEXTSCAN",
-    "AT+RSI_BSSID?",
-    "AT+RSI_NWTYPE?",
-    "AT+RSI_DNSGET="
+	"AT+RSI_CLS=",
+	"AT+RSI_SND=",
+    "AT+RSI_DNSGET=",
+	"AT+RSI_FWVERSION?",
+    "AT+RSI_NWPARAMS?",
+    "AT+RSI_RESET",
+    "AT+RSI_MAC?",
+    "AT+RSI_RSSI?",
+	"AT+RSI_CFGSAVE",
+	"AT+RSI_CFGENABLE=",
+	"AT+RSI_CFGGET?"
 };
 
 static const char *NETWORK_TYPE_STR[] =
@@ -86,6 +86,12 @@ void RS9110_UART::SetPersistor (IPersistor *persistor)
     {
         _persistor = persistor;
     }
+}
+
+
+IPersistor * RS9110_UART::GetPersistor ()
+{
+    return _persistor;
 }
 
 
@@ -584,10 +590,11 @@ bool RS9110_UART::CloseSocket (unsigned char socketId)
 }
 
 
-unsigned int RS9110_UART::Send (unsigned char socketId, const char *hostIpAddr, unsigned short hostPort, const char *data, unsigned int dataSize)
+unsigned int RS9110_UART::Send (unsigned char socketId, ESocketType socketType, const char *hostIpAddr, unsigned short hostPort, const char *data, unsigned int dataSize)
 {
 	bool bRtn;
     unsigned int sendLen;
+    unsigned int maxDataLen;
 
 
     if(IsValidSocketId(socketId) == false)
@@ -597,17 +604,33 @@ unsigned int RS9110_UART::Send (unsigned char socketId, const char *hostIpAddr, 
     }
 
     /* Command and Parameters */
-	_snprintf_s(_buffer, sizeof(_buffer), "%s%d,0,%s,%d,", COMMAND[CMD_SEND_DATA], socketId, hostIpAddr, hostPort);
+    switch(socketType)
+    {
+        case SOCKET_TCP:
+            _snprintf_s(_buffer, sizeof(_buffer), "%s%d,0,0,0,", COMMAND[CMD_SEND_DATA], socketId);
+            maxDataLen = MAX_SEND_DATA_SIZE_TCP;
+        break;
+
+        case SOCKET_UDP:
+            _snprintf_s(_buffer, sizeof(_buffer), "%s%d,0,%s,%d,", COMMAND[CMD_SEND_DATA], socketId, hostIpAddr, hostPort);
+            maxDataLen = MAX_SEND_DATA_SIZE_UDP;
+        break;
+
+        default:
+            _lastCommand = CMD_MAX;
+            return 0;
+        break;
+    }
 
     /* Fill data after byte stuffing */
-    unsigned int destSize = sizeof(_buffer) - strlen(_buffer);
-    unsigned int hdr = destSize;
+    unsigned int destSize = maxDataLen;
+    unsigned int hdr = strlen(_buffer);
     sendLen = SendByteStuffing(&_buffer[strlen(_buffer)], destSize, data, dataSize);
 
     /* End of Command */
     _snprintf(&_buffer[hdr + destSize], sizeof(_buffer), "%s", CMD_END);
 
-	bRtn = _persistor->Write((unsigned char *) _buffer, strlen(_buffer));
+	bRtn = _persistor->Write((unsigned char *) _buffer, (hdr + destSize + strlen(CMD_END)));
 
 	_lastCommand = ((bRtn == true) ? CMD_SEND_DATA : CMD_MAX);
 	
@@ -821,13 +844,13 @@ static bool IsValidString (const char *string, int maxLen)
 
 static unsigned int SendByteStuffing (char *destination, unsigned int &dstSize, const char *source, unsigned int srcSize)
 {
-	const char     *pos     = source;
-    unsigned int    tmpSize = dstSize;
+	const char *pos     = source;
+    int         tmpSize = (int) dstSize;
 
 
-	while((dstSize > 0) || (srcSize > 1))
+	while((tmpSize >= 2) && (srcSize >= 1))
 	{
-		if((*pos == 0x0D) && (*(pos+1) == 0x0A))
+		if((*pos == (char) 0x0D) && (*(pos+1) == (char) 0x0A))
 		{
 			*destination++ = (char) 0xDB;
 			*destination++ = (char) 0xDC;
@@ -835,12 +858,17 @@ static unsigned int SendByteStuffing (char *destination, unsigned int &dstSize, 
 			tmpSize -= 2;
 			srcSize -= 2;
 		}
-		else if(*pos == 0xDB)
+		else if(*pos == (char) 0xDB)
 		{
 			*destination++ = (char) 0xDB;
 			*destination++ = (char) 0xDD;
 			pos++;
 			tmpSize -= 2;
+            if(tmpSize < 8)
+            {
+                int i = 0;
+                i++;
+            }
 			srcSize -= 1;
 		}
 		else
