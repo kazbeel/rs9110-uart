@@ -10,7 +10,7 @@
 
 class RS9110_UART
 {
-private:
+public:
 
     /* CONSTANTS */
     static const unsigned char  MAX_SSID_LEN			= 32;
@@ -21,44 +21,42 @@ private:
 	static const unsigned char	MAX_SOCKET_HANDLE		= 7;
 	static const unsigned short	MIN_TCP_SOCKET_PORT		= 1024;
 	static const unsigned short MAX_TCP_SOCKET_PORT		= 49151;
-	static const unsigned int	MAX_BUFFER_SIZE			= 1515;
+	static const unsigned int	MAX_BUFFER_SIZE			= 1520;
     static const unsigned char  MAX_NUM_SCAN_RESULTS    = 10;
-
-public:
 
     /* ENUMS */
     enum ECommand
     {
         CMD_BAND = 0,
         CMD_INIT,
+        CMD_GET_SCAN_RESULTS,
+        CMD_SET_SCAN_RESULTS,
         CMD_SCAN,
+        CMD_NEXT_SCAN,
+        CMD_GET_MAC_APS,
+        CMD_GET_NETWORK_TYPE,
         CMD_SET_NETWORK_TYPE,
         CMD_PSK,
         CMD_AUTH_MODE,
         CMD_JOIN,
-		CMD_RESET,
+		CMD_DISASSOCIATE,
 		CMD_IP_CONF,
-		CMD_CLOSE_SOCKET,
 		CMD_OPEN_TCP_SOCKET,
+        CMD_OPEN_LISTENING_UDP_SOCKET,
+        CMD_OPEN_UDP_SOCKET,
+        CMD_OPEN_LISTENING_TCP_SOCKET,
+        CMD_GET_SOCKET_STATUS,
+		CMD_CLOSE_SOCKET,
+		CMD_SEND_DATA,
+        CMD_GET_DNS,
+		CMD_FW_VERSION,
+        CMD_GET_NETWORK_PARAMS,
+        CMD_RESET,
+        CMD_GET_MAC,
+        CMD_GET_RSSI,
 		CMD_SAVE_CONFIG,
 		CMD_ENABLE_CONFIG,
 		CMD_GET_CONFIG,
-		CMD_DISASSOCIATE,
-		CMD_FW_VERSION,
-		CMD_SEND_DATA,
-        CMD_GET_MAC,
-        CMD_GET_RSSI,
-        CMD_GET_NETWORK_PARAMS,
-        CMD_OPEN_UDP_SOCKET,
-        CMD_OPEN_LISTENING_TCP_SOCKET,
-        CMD_OPEN_LISTENING_UDP_SOCKET,
-        CMD_GET_SOCKET_STATUS,
-        CMD_GET_SCAN_RESULTS,
-        CMD_SET_SCAN_RESULTS,
-        CMD_NEXT_SCAN,
-        CMD_GET_MAC_APS,
-        CMD_GET_NETWORK_TYPE,
-        CMD_GET_DNS,
         CMD_MAX
     };
 
@@ -168,6 +166,13 @@ public:
         CONFIG_MAX
     };
 
+    enum ESocketType
+    {
+        SOCKET_TCP = 0,
+        SOCKET_UDP,
+        SOCKET_MAX
+    };
+
 
     /* STRUCTURES */
     struct TScanResponse
@@ -183,6 +188,7 @@ public:
     ~RS9110_UART ();
 
     void            SetPersistor (IPersistor *persistor);
+    IPersistor *    GetPersistor ();
 
     bool            ProcessMessage (char *message, unsigned int size);
 
@@ -215,7 +221,7 @@ public:
     bool            OpenListeningTcpSocket  (unsigned short localPort);
     bool            GetSocketStatus         (unsigned char socketId);
 	bool            CloseSocket             (unsigned char socketId);
-    unsigned int    Send                    (unsigned char socketId, const char *hostIpAddr, unsigned short hostPort, const char *data, unsigned int dataSize);
+    unsigned int    Send                    (unsigned char socketId, ESocketType socketType, const char *hostIpAddr, unsigned short hostPort, const char *data, unsigned int dataSize);
     /*! @todo Receive Data on a Socket */
     bool            GetDNS                  (const char *domainName);
 
