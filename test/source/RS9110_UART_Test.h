@@ -34,7 +34,7 @@ CPPUNIT_TEST_SUITE(RS9110_UART_Test);
     CPPUNIT_TEST(OpenListeningTcpSocketTest);
     CPPUNIT_TEST(GetSocketStatusTest);
     CPPUNIT_TEST(CloseSocketTest);
-    //CPPUNIT_TEST(SendTest);
+    CPPUNIT_TEST(SendTest);
     CPPUNIT_TEST(GetDNSTest);
 
     CPPUNIT_TEST(GetFirmwareVersionTest);
@@ -54,7 +54,7 @@ public:
     void setUp ();
     void tearDown ();
 
-    void CompareStream (const char *stream);
+    void CompareStream (const char *stream, unsigned int size = 0);
 
     void ProcessMessageTest ();
 
