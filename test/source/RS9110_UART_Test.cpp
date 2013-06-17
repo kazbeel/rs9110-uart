@@ -54,20 +54,20 @@ void RS9110_UART_Test::ProcessMessageTest ()
 {
     bool bRtn;
 
-
-    bRtn = rs->ProcessMessage("OK\r\n", 4);
+    
+    bRtn = rs->ProcessMessage("OK\r\n");
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_OK);
     CPPUNIT_ASSERT(rs->GetErrorCode() == RS9110_UART::ERROR_NONE);
 
-    bRtn = rs->ProcessMessage("ERROR‡\r\n", 8);
+    bRtn = rs->ProcessMessage("ERROR‡\r\n");
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_ERROR);
     CPPUNIT_ASSERT(rs->GetErrorCode() == RS9110_UART::ERROR_NO_EXIST_TCP_SERVER);
 
     //! @todo RESP_TYPE_READ
 
-    bRtn = rs->ProcessMessage("UNKNOWN\r\n", 9);
+    bRtn = rs->ProcessMessage("UNKNOWN\r\n");
     CPPUNIT_ASSERT(bRtn == false);
 }
 
@@ -382,7 +382,7 @@ void RS9110_UART_Test::OpenListeningUdpSocketTest ()
 
     bRtn = rs->OpenListeningUdpSocket(0);
     CPPUNIT_ASSERT(bRtn == true);
-    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_OPEN_LISTENING_UDP_SOCKET);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_OPEN_LUDP_SOCKET);
     CompareStream("AT+RSI_LUDP=0\r\n");
 
     bRtn = rs->OpenListeningUdpSocket(65535);
@@ -417,7 +417,7 @@ void RS9110_UART_Test::OpenListeningTcpSocketTest ()
 
     bRtn = rs->OpenListeningTcpSocket(0);
     CPPUNIT_ASSERT(bRtn == true);
-    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_OPEN_LISTENING_TCP_SOCKET);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_OPEN_LTCP_SOCKET);
     CompareStream("AT+RSI_LTCP=0\r\n");
 
     bRtn = rs->OpenListeningTcpSocket(65535);
