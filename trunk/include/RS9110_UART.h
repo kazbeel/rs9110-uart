@@ -23,6 +23,8 @@ public:
 	static const unsigned short MAX_TCP_SOCKET_PORT		= 49151;
 	static const unsigned int	MAX_BUFFER_SIZE			= 1520;
     static const unsigned char  MAX_NUM_SCAN_RESULTS    = 10;
+    static const unsigned char  MAC_ADDRESS_LEN         = 6;
+    static const unsigned char  NW_ADDRESS_LEN          = 4;
 
     /* ENUMS */
     enum ECommand
@@ -42,9 +44,9 @@ public:
 		CMD_DISASSOCIATE,
 		CMD_IP_CONF,
 		CMD_OPEN_TCP_SOCKET,
-        CMD_OPEN_LISTENING_UDP_SOCKET,
+        CMD_OPEN_LUDP_SOCKET,
         CMD_OPEN_UDP_SOCKET,
-        CMD_OPEN_LISTENING_TCP_SOCKET,
+        CMD_OPEN_LTCP_SOCKET,
         CMD_GET_SOCKET_STATUS,
 		CMD_CLOSE_SOCKET,
 		CMD_SEND_DATA,
@@ -170,17 +172,148 @@ public:
     {
         SOCKET_TCP = 0,
         SOCKET_UDP,
+        SOCKET_LTCP,
+        SOCKET_MULTICAST,
+        SOCKET_LUDP,
         SOCKET_MAX
+    };
+
+    enum ENetworkTypeResp
+    {
+        NW_TYPE_RSP_INFRA = 0,
+        NW_TYPE_RSP_ADHOC,
+        NW_TYPE_RSP_MAX
     };
 
 
     /* STRUCTURES */
-    struct TScanResponse
+#pragma pack(push, 1)
+    struct TNumScanResults
+    {
+        unsigned char value;
+    };
+
+    struct TScan
     {
         char            ssid[MAX_SSID_LEN];
         unsigned char   mode;
         unsigned char   rssi;
     };
+
+    struct TBssid
+    {
+        char            ssid[MAX_SSID_LEN];
+        unsigned char   bssid[MAC_ADDRESS_LEN];
+    };
+
+    struct TNetworkType
+    {
+        char            ssid[MAX_SSID_LEN];
+        unsigned char   nwType;
+
+    };
+
+    struct TIPConfig
+    {
+        unsigned char   mac[MAC_ADDRESS_LEN];
+        unsigned char   address[NW_ADDRESS_LEN];
+        unsigned char   subnet[NW_ADDRESS_LEN];
+        unsigned char   gateway[NW_ADDRESS_LEN];
+    };
+
+    struct TSocket
+    {
+        unsigned char   id;
+    };
+
+    struct TSocketStatus
+    {
+        unsigned char   id;
+        unsigned char   address[NW_ADDRESS_LEN];
+        unsigned short  port;
+    };
+
+    struct TSendData
+    {
+        unsigned char   ignore;
+    };
+
+    /*! @todo Fill something for READ? */
+
+    /*! @todo Do something with this mothafucka!
+    struct TDNSGet
+    {
+        unsigned char   numIPs;
+        unsigned char   ;
+    };
+    */
+
+    struct TFWVersion
+    {
+        char            version[5];
+    };
+
+    struct TNetworkParams
+    {
+        char            ssid[MAX_SSID_LEN];
+        unsigned char   secMode;
+        char            psk[MAX_PSK_LEN];   //! @note It can be 32. See docu.
+        unsigned char   channel;
+        unsigned char   mac[MAC_ADDRESS_LEN];
+        unsigned char   dhcpMode;
+        unsigned char   address[NW_ADDRESS_LEN];
+        unsigned char   subnet[NW_ADDRESS_LEN];
+        unsigned char   gateway[NW_ADDRESS_LEN];
+        unsigned char   numOpenSockets;
+        /*!note Socket Details. As many as numOpenSockets indicates. */
+    };
+
+    struct TSocketDetails
+    {
+        unsigned char   id;
+        unsigned char   type;
+        unsigned short  srcPort;
+        unsigned short  dstPort;
+        unsigned char   dstAddress[NW_ADDRESS_LEN];
+
+    };
+
+    struct TMACAddress
+    {
+        unsigned char   mac[MAC_ADDRESS_LEN];
+    };
+
+    struct TRSSI
+    {
+        unsigned char   value;
+    };
+
+    struct TStoredConfig
+    {
+        unsigned char   isValid;
+        unsigned char   channel;
+        unsigned char   nwType;
+        unsigned char   secMode;
+        unsigned char   dataRate;
+        unsigned char   powerLevel;
+        char            psk[MAX_PSK_LEN];
+        unsigned char   ssid[MAX_SSID_LEN];
+        unsigned char   reserved;
+        unsigned char   dhcp;
+        unsigned char   address[NW_ADDRESS_LEN];
+        unsigned char   subnet[NW_ADDRESS_LEN];
+        unsigned char   gateway[NW_ADDRESS_LEN];
+        unsigned char   featureSelect[4];
+        /*! @note WEP Configuration only if Bit[7] of "Feature Select" is set to 1. */
+    };
+
+    struct TWEPConfig
+    {
+        unsigned char   authMode;
+        unsigned char   index;
+        unsigned char   keys[96];
+    };
+#pragma pack(pop)
 
 
     /* METHODS */
@@ -190,7 +323,7 @@ public:
     void            SetPersistor (IPersistor *persistor);
     IPersistor *    GetPersistor ();
 
-    bool            ProcessMessage (char *message, unsigned int size);
+    bool            ProcessMessage (char *message);
 
     ECommand        GetLastCommand ();
     EResponseType   GetResponseType ();
@@ -241,6 +374,10 @@ private:
     /* METHODS */
     void ProcessResponseType (const char *message);
     bool IsValidSocketId (unsigned char socketId);
+    bool IsValidLocalTcpPort (unsigned short port);
+    bool GenericCommand (ECommand command);
+    bool GenericCommandInt (ECommand command, int value);
+    bool GenericCommandStr (ECommand command, const char *str);
 
 
     /* VARIABLES */
