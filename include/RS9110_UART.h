@@ -25,6 +25,7 @@ public:
     static const unsigned char  MAX_NUM_SCAN_RESULTS    = 10;
     static const unsigned char  MAC_ADDRESS_LEN         = 6;
     static const unsigned char  NW_ADDRESS_LEN          = 4;
+    static const unsigned int   MAX_SLEEP_TIME_MS		= 10000;
 
     /* ENUMS */
     enum ECommand
@@ -42,6 +43,10 @@ public:
         CMD_AUTH_MODE,
         CMD_JOIN,
 		CMD_DISASSOCIATE,
+		CMD_POWER_MODE,
+		CMD_KEEP_SLEEPING,
+		CMD_SLEEP_TIMER,
+		CMD_FEATURE_SELECT,
 		CMD_IP_CONF,
 		CMD_OPEN_TCP_SOCKET,
         CMD_OPEN_LUDP_SOCKET,
@@ -68,7 +73,7 @@ public:
         RESP_TYPE_ERROR,
         RESP_TYPE_READ,
         RESP_TYPE_CLOSE,
-        RESP_TYPE_UNKNOWN,
+		RESP_TYPE_SLEEP,
         RESP_TYPE_MAX
     };
 
@@ -185,6 +190,13 @@ public:
         NW_TYPE_RSP_MAX
     };
 
+	enum EPowerMode
+	{
+		PW_MODE_0 = 0,
+		PW_MODE_1,
+		PW_MODE_2,
+		PW_MODE_MAX
+	};
 
     /* STRUCTURES */
 #pragma pack(push, 1)
@@ -213,6 +225,44 @@ public:
 
     };
 
+#if 0
+	struct TFeatureSelect
+	{
+		unsigned int	bit31	            : 1;
+		unsigned int	bit30	            : 1;
+		unsigned int	bit29	            : 1;
+		unsigned int	bit28	            : 1;
+		unsigned int	bit27	            : 1;
+		unsigned int	bit26	            : 1;
+		unsigned int	bit25	            : 1;
+		unsigned int	bit24	            : 1;
+		unsigned int	bit23	            : 1;
+		unsigned int	bit22	            : 1;
+		unsigned int	bit21	            : 1;
+		unsigned int	bit20	            : 1;
+		unsigned int	bit19	            : 1;
+		unsigned int	bit18	            : 1;
+		unsigned int	bit17	            : 1;
+		unsigned int	bit16	            : 1;
+		unsigned int	bit15	            : 1;
+		unsigned int	bit14	            : 1;
+		unsigned int	bit13	            : 1;
+		unsigned int	bit12	            : 1;
+		unsigned int	authModeRelevance   : 1;
+		unsigned int	bit10	            : 1;
+		unsigned int	bit9	            : 1;
+		unsigned int	bit8	            : 1;
+		unsigned int	wepInConfig         : 1;
+		unsigned int	bit6	            : 1;
+		unsigned int	bit5	            : 1;
+		unsigned int	bit4	            : 1;
+		unsigned int	pskLength           : 1;
+		unsigned int	bit2	            : 1;
+		unsigned int	bit1	            : 1;
+		unsigned int	dnsServerAddr       : 1;
+	};
+#endif
+
     struct TIPConfig
     {
         unsigned char   mac[MAC_ADDRESS_LEN];
@@ -230,23 +280,38 @@ public:
     {
         unsigned char   id;
         unsigned char   address[NW_ADDRESS_LEN];
-        unsigned short  port;
+        unsigned short  port;                       /*! @note Big endian */
     };
 
-    struct TSendData
+    struct TSend
     {
         unsigned char   ignore;
     };
 
     /*! @todo Fill something for READ? */
+    struct TRead
+    {
+        unsigned char   socketId;
+        unsigned short  size;
+        unsigned char   address[NW_ADDRESS_LEN];
+        unsigned short  srcPort;                    /*! @note Big endian */
+        char           *data;
+    };
 
-    /*! @todo Do something with this mothafucka!
     struct TDNSGet
     {
         unsigned char   numIPs;
-        unsigned char   ;
+        unsigned char   address1[NW_ADDRESS_LEN];
+        unsigned char   address2[NW_ADDRESS_LEN];
+        unsigned char   address3[NW_ADDRESS_LEN];
+        unsigned char   address4[NW_ADDRESS_LEN];
+        unsigned char   address5[NW_ADDRESS_LEN];
+        unsigned char   address6[NW_ADDRESS_LEN];
+        unsigned char   address7[NW_ADDRESS_LEN];
+        unsigned char   address8[NW_ADDRESS_LEN];
+        unsigned char   address9[NW_ADDRESS_LEN];
+        unsigned char   address10[NW_ADDRESS_LEN];
     };
-    */
 
     struct TFWVersion
     {
@@ -257,7 +322,7 @@ public:
     {
         char            ssid[MAX_SSID_LEN];
         unsigned char   secMode;
-        char            psk[MAX_PSK_LEN];   //! @note It can be 32. See docu.
+        char            psk[MAX_PSK_LEN];
         unsigned char   channel;
         unsigned char   mac[MAC_ADDRESS_LEN];
         unsigned char   dhcpMode;
@@ -272,8 +337,8 @@ public:
     {
         unsigned char   id;
         unsigned char   type;
-        unsigned short  srcPort;
-        unsigned short  dstPort;
+        unsigned short  srcPort;                    /*! @note Big endian */
+        unsigned short  dstPort;                    /*! @note Big endian */
         unsigned char   dstAddress[NW_ADDRESS_LEN];
 
     };
@@ -296,7 +361,7 @@ public:
         unsigned char   secMode;
         unsigned char   dataRate;
         unsigned char   powerLevel;
-        char            psk[MAX_PSK_LEN];
+        char            psk[MAX_PSK_LEN + 1];
         unsigned char   ssid[MAX_SSID_LEN];
         unsigned char   reserved;
         unsigned char   dhcp;
@@ -320,14 +385,14 @@ public:
     RS9110_UART (IPersistor *persistor);
     ~RS9110_UART ();
 
-    void            SetPersistor (IPersistor *persistor);
-    IPersistor *    GetPersistor ();
+    void            SetPersistor            (IPersistor *persistor);
+    IPersistor *    GetPersistor            ();
 
     bool            ProcessMessage (char *message);
 
-    ECommand        GetLastCommand ();
-    EResponseType   GetResponseType ();
-    EErrorCode      GetErrorCode ();
+    ECommand        GetLastCommand          ();
+    EResponseType   GetResponseType         ();
+    EErrorCode      GetErrorCode            ();
 
     bool            Band                    (EBand eBand);
     bool            Init                    ();
@@ -345,7 +410,11 @@ public:
     bool            Join                    (const char *ssid, ETxRate eTxRate, ETxPower eTxPower);
 	bool            Disassociate            ();
     
-    /*! @todo Power Modes */
+	bool			PowerMode				(EPowerMode powerMode);
+	bool			KeepSleeping			();
+	bool			SetSleepTimer			(unsigned int milliseconds);
+
+	bool			SetFeatureSelect		(unsigned int value);
 
     bool            IPConfiguration         (EDHCPMode eDHCPMode, const char *ipAddr, const char *subNetwork, const char *gateway);
 	bool            OpenTcpSocket           (const char *hostIpAddr, unsigned short targetPort, unsigned short localPort);
@@ -355,7 +424,6 @@ public:
     bool            GetSocketStatus         (unsigned char socketId);
 	bool            CloseSocket             (unsigned char socketId);
     unsigned int    Send                    (unsigned char socketId, ESocketType socketType, const char *hostIpAddr, unsigned short hostPort, const char *data, unsigned int dataSize);
-    /*! @todo Receive Data on a Socket */
     bool            GetDNS                  (const char *domainName);
 
 	bool            GetFirmwareVersion      ();
@@ -372,17 +440,17 @@ public:
 private:
 
     /* METHODS */
-    void ProcessResponseType (const char *message);
-    bool IsValidSocketId (unsigned char socketId);
-    bool IsValidLocalTcpPort (unsigned short port);
-    bool GenericCommand (ECommand command);
-    bool GenericCommandInt (ECommand command, int value);
-    bool GenericCommandStr (ECommand command, const char *str);
+    void ProcessResponseType    (const char *message);
+    bool IsValidSocketId        (unsigned char socketId);
+    bool IsValidLocalTcpPort    (unsigned short port);
+    bool GenericCommand         (ECommand command);
+    bool GenericCommandInt      (ECommand command, int value);
+    bool GenericCommandStr      (ECommand command, const char *str);
 
 
     /* VARIABLES */
     IPersistor     *_persistor;
-    char            _buffer[MAX_BUFFER_SIZE];
+    char            _outBuffer[MAX_BUFFER_SIZE];
     ECommand        _lastCommand;
     EResponseType   _responseType;
     EErrorCode      _errorCode;
