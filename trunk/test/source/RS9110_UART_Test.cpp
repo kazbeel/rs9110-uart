@@ -54,7 +54,7 @@ void RS9110_UART_Test::ProcessMessageTest ()
 {
     bool bRtn;
 
-    
+
     bRtn = rs->ProcessMessage("OK\r\n");
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_OK);
@@ -320,6 +320,72 @@ void RS9110_UART_Test::DisassociateTest ()
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_DISASSOCIATE);
     CompareStream("AT+RSI_DISASSOC\r\n");
+}
+
+
+void RS9110_UART_Test::PowerModeTest ()
+{
+	bool bRtn;
+
+
+	bRtn = rs->PowerMode(RS9110_UART::PW_MODE_0);
+    CPPUNIT_ASSERT(bRtn == true);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_POWER_MODE);
+    CompareStream("AT+RSI_PWMODE=0\r\n");
+
+	bRtn = rs->PowerMode(RS9110_UART::PW_MODE_1);
+    CPPUNIT_ASSERT(bRtn == true);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_POWER_MODE);
+    CompareStream("AT+RSI_PWMODE=1\r\n");
+
+	bRtn = rs->PowerMode(RS9110_UART::PW_MODE_2);
+    CPPUNIT_ASSERT(bRtn == true);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_POWER_MODE);
+    CompareStream("AT+RSI_PWMODE=2\r\n");
+}
+
+
+void RS9110_UART_Test::KeepSleepingTest ()
+{
+	bool bRtn;
+
+
+	bRtn = rs->KeepSleeping();
+    CPPUNIT_ASSERT(bRtn == true);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_KEEP_SLEEPING);
+    CompareStream("ACK\r\n");
+}
+
+
+void RS9110_UART_Test::SetSleepTimerTest ()
+{
+	bool bRtn;
+
+
+	bRtn = rs->SetSleepTimer(0);
+    CPPUNIT_ASSERT(bRtn == false);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+
+	bRtn = rs->SetSleepTimer(10001);
+    CPPUNIT_ASSERT(bRtn == false);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+
+	bRtn = rs->SetSleepTimer(168);
+    CPPUNIT_ASSERT(bRtn == true);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_SLEEP_TIMER);
+    CompareStream("AT+RSI_SLEEPTIMER=168\r\n");
+}
+
+
+void RS9110_UART_Test::SetFeatureSelectTest ()
+{
+    bool bRtn;
+
+
+    bRtn = rs->SetFeatureSelect(1024);
+    CPPUNIT_ASSERT(bRtn == true);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_FEATURE_SELECT);
+    CompareStream("AT+RSI_FEAT_SEL=1024\r\n");
 }
 
 
