@@ -21,6 +21,10 @@ static const char *COMMAND[] =
     "AT+RSI_AUTHMODE=",
     "AT+RSI_JOIN=",
 	"AT+RSI_DISASSOC",
+	"AT+RSI_PWMODE=",
+	"ACK",
+	"AT+RSI_SLEEPTIMER=",
+	"AT+RSI_FEAT_SEL=",
 	"AT+RSI_IPCONF=",
 	"AT+RSI_TCP=",
     "AT+RSI_LUDP=",
@@ -51,7 +55,9 @@ static const char *CMD_RESP_OK      = "OK";
 static const char *CMD_RESP_ERROR   = "ERROR";
 static const char *CMD_RESP_READ    = "AT+RSI_READ";
 static const char *CMD_RESP_CLOSE   = "AT+RSI_CLOSE";
+static const char *CMD_RESP_SLEEP   = "SLEEP";
 
+static const char *CMD_ACK			= "ACK";
 static const char *CMD_END          = "\r\n";
 
 static const unsigned char CMD_RESP_OK_LEN      = strlen(CMD_RESP_OK);
@@ -69,7 +75,7 @@ RS9110_UART::RS9110_UART (IPersistor *persistor)
   : _persistor(persistor),
     _lastCommand(CMD_MAX)
 {
-    memset(_buffer, 0, sizeof(_buffer));
+    memset(_outBuffer, 0, sizeof(_outBuffer));
 }
 
 
@@ -97,7 +103,7 @@ IPersistor * RS9110_UART::GetPersistor ()
 /*! @todo Should I return the response type? */
 bool RS9110_UART::ProcessMessage (char *message)
 {
-    bool bRtn = true;
+    bool            bRtn = true;
 
 
     ProcessResponseType(message);
@@ -125,7 +131,7 @@ bool RS9110_UART::ProcessMessage (char *message)
             /*! @todo Stub */
         break;
 
-        case RESP_TYPE_UNKNOWN:
+        case RESP_TYPE_SLEEP:
             /*! @todo Stub */
         break;
 
@@ -200,7 +206,7 @@ bool RS9110_UART::Scan (unsigned char channel, const char *ssid)
     if(IsValidString(ssid) == false)
     {
         /*! @todo Check if we have to send '\0' or nothing */
-        _snprintf_s(_buffer, sizeof(_buffer), "%s%d%s", COMMAND[CMD_SCAN], channel, CMD_END);
+        _snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%d%s", COMMAND[CMD_SCAN], channel, CMD_END);
     }
     else
     {
@@ -210,10 +216,10 @@ bool RS9110_UART::Scan (unsigned char channel, const char *ssid)
             return false;
         }
 
-        _snprintf_s(_buffer, sizeof(_buffer), "%s%d,%s%s", COMMAND[CMD_SCAN], channel, ssid, CMD_END);
+        _snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%d,%s%s", COMMAND[CMD_SCAN], channel, ssid, CMD_END);
     }
 
-    bRtn = _persistor->Write((unsigned char *) _buffer, strlen(_buffer));
+    bRtn = _persistor->Write((unsigned char *) _outBuffer, strlen(_outBuffer));
 
     _lastCommand = ((bRtn == true) ? CMD_SCAN : CMD_MAX);
 
@@ -247,12 +253,12 @@ bool RS9110_UART::SetNetworkType (ENetworkType eNWType, EIBSSType eIBSSType, uns
     switch(eNWType)
     {
         case NW_TYPE_INFRASTRUCTURE:
-            _snprintf_s(_buffer, sizeof(_buffer), "%s%s%s", COMMAND[CMD_SET_NETWORK_TYPE], NETWORK_TYPE_STR[eNWType], CMD_END);
+            _snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%s%s", COMMAND[CMD_SET_NETWORK_TYPE], NETWORK_TYPE_STR[eNWType], CMD_END);
         break;
 
         case NW_TYPE_IBSS:
         case NW_TYPE_IBSS_SEC:
-            _snprintf_s(_buffer, sizeof(_buffer), "%s%s,%d,%d%s", COMMAND[CMD_SET_NETWORK_TYPE], NETWORK_TYPE_STR[eNWType], eIBSSType, channel, CMD_END);
+            _snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%s,%d,%d%s", COMMAND[CMD_SET_NETWORK_TYPE], NETWORK_TYPE_STR[eNWType], eIBSSType, channel, CMD_END);
         break;
 
         default:
@@ -261,7 +267,7 @@ bool RS9110_UART::SetNetworkType (ENetworkType eNWType, EIBSSType eIBSSType, uns
         break;
     }
 
-    bRtn = _persistor->Write((unsigned char *) _buffer, strlen(_buffer));
+    bRtn = _persistor->Write((unsigned char *) _outBuffer, strlen(_outBuffer));
 
     _lastCommand = ((bRtn == true) ? CMD_SET_NETWORK_TYPE : CMD_MAX);
 
@@ -298,9 +304,9 @@ bool RS9110_UART::Join (const char *ssid, ETxRate eTxRate, ETxPower eTxPower)
         return false;
     }
 
-    _snprintf_s(_buffer, sizeof(_buffer), "%s%s,%d,%d%s", COMMAND[CMD_JOIN], ssid, eTxRate, eTxPower, CMD_END);
+    _snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%s,%d,%d%s", COMMAND[CMD_JOIN], ssid, eTxRate, eTxPower, CMD_END);
 
-    bRtn = _persistor->Write((unsigned char *) _buffer, strlen(_buffer));
+    bRtn = _persistor->Write((unsigned char *) _outBuffer, strlen(_outBuffer));
 
     _lastCommand = ((bRtn == true) ? CMD_JOIN : CMD_MAX);
 
@@ -311,6 +317,37 @@ bool RS9110_UART::Join (const char *ssid, ETxRate eTxRate, ETxPower eTxPower)
 bool RS9110_UART::Disassociate ()
 {
     return GenericCommand(CMD_DISASSOCIATE);
+}
+
+
+bool RS9110_UART::PowerMode	(EPowerMode powerMode)
+{
+	return GenericCommandInt(CMD_POWER_MODE, powerMode);
+}
+
+
+bool RS9110_UART::KeepSleeping ()
+{
+	return GenericCommand(CMD_KEEP_SLEEPING);
+}
+
+
+bool RS9110_UART::SetSleepTimer (unsigned int milliseconds)
+{
+	if((milliseconds == 0) || (milliseconds > MAX_SLEEP_TIME_MS))
+	{
+		_lastCommand = CMD_MAX;
+		return false;
+	}
+
+	return GenericCommandInt(CMD_SLEEP_TIMER, milliseconds);
+}
+
+
+/*! @todo The parameter should be an structure instead or reset all bits that must be '0' */
+bool RS9110_UART::SetFeatureSelect (unsigned int value)
+{
+	return GenericCommandInt(CMD_FEATURE_SELECT, value);
 }
 
 
@@ -330,9 +367,9 @@ bool RS9110_UART::IPConfiguration (EDHCPMode eDHCPMode, const char *ipAddr, cons
 			}
 			else
 			{
-				_snprintf_s(_buffer, sizeof(_buffer), "%s%d,%s,%s,%s%s", COMMAND[CMD_IP_CONF], eDHCPMode, ipAddr, subNetwork, gateway, CMD_END);
+				_snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%d,%s,%s,%s%s", COMMAND[CMD_IP_CONF], eDHCPMode, ipAddr, subNetwork, gateway, CMD_END);
 
-				bRtn = _persistor->Write((unsigned char *) _buffer, strlen(_buffer));
+				bRtn = _persistor->Write((unsigned char *) _outBuffer, strlen(_outBuffer));
 
 				_lastCommand = ((bRtn == true) ? CMD_IP_CONF : CMD_MAX);
 			}
@@ -340,9 +377,9 @@ bool RS9110_UART::IPConfiguration (EDHCPMode eDHCPMode, const char *ipAddr, cons
 
 		case DHCP_DHCP:
             /*! @todo Check if we have to send '0.0.0.0' or just '0' */
-			_snprintf_s(_buffer, sizeof(_buffer), "%s%d,0,0,0%s", COMMAND[CMD_IP_CONF], eDHCPMode, CMD_END);
+			_snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%d,0,0,0%s", COMMAND[CMD_IP_CONF], eDHCPMode, CMD_END);
 
-			bRtn = _persistor->Write((unsigned char *) _buffer, strlen(_buffer));
+			bRtn = _persistor->Write((unsigned char *) _outBuffer, strlen(_outBuffer));
 
 			_lastCommand = ((bRtn == true) ? CMD_IP_CONF : CMD_MAX);
 		break;
@@ -367,9 +404,9 @@ bool RS9110_UART::OpenTcpSocket (const char *hostIpAddr, unsigned short targetPo
 		return false;
 	}
 
-	_snprintf_s(_buffer, sizeof(_buffer), "%s%s,%d,%d%s", COMMAND[CMD_OPEN_TCP_SOCKET], hostIpAddr, targetPort, localPort, CMD_END);
+	_snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%s,%d,%d%s", COMMAND[CMD_OPEN_TCP_SOCKET], hostIpAddr, targetPort, localPort, CMD_END);
 
-	bRtn = _persistor->Write((unsigned char *) _buffer, strlen(_buffer));
+	bRtn = _persistor->Write((unsigned char *) _outBuffer, strlen(_outBuffer));
 
 	_lastCommand = ((bRtn == true) ? CMD_OPEN_TCP_SOCKET : CMD_MAX);
 
@@ -394,9 +431,9 @@ bool RS9110_UART::OpenUdpSocket (const char *hostIpAddr, unsigned short targetPo
 		return false;
 	}
 
-	_snprintf_s(_buffer, sizeof(_buffer), "%s%s,%d,%d%s", COMMAND[CMD_OPEN_UDP_SOCKET], hostIpAddr, targetPort, localPort, CMD_END);
+	_snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%s,%d,%d%s", COMMAND[CMD_OPEN_UDP_SOCKET], hostIpAddr, targetPort, localPort, CMD_END);
 
-	bRtn = _persistor->Write((unsigned char *) _buffer, strlen(_buffer));
+	bRtn = _persistor->Write((unsigned char *) _outBuffer, strlen(_outBuffer));
 
 	_lastCommand = ((bRtn == true) ? CMD_OPEN_UDP_SOCKET : CMD_MAX);
 
@@ -451,12 +488,12 @@ unsigned int RS9110_UART::Send (unsigned char socketId, ESocketType socketType, 
     switch(socketType)
     {
         case SOCKET_TCP:
-            _snprintf_s(_buffer, sizeof(_buffer), "%s%d,0,0,0,", COMMAND[CMD_SEND_DATA], socketId);
+            _snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%d,0,0,0,", COMMAND[CMD_SEND_DATA], socketId);
             maxDataLen = MAX_SEND_DATA_SIZE_TCP;
         break;
 
         case SOCKET_UDP:
-            _snprintf_s(_buffer, sizeof(_buffer), "%s%d,0,%s,%d,", COMMAND[CMD_SEND_DATA], socketId, hostIpAddr, hostPort);
+            _snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%d,0,%s,%d,", COMMAND[CMD_SEND_DATA], socketId, hostIpAddr, hostPort);
             maxDataLen = MAX_SEND_DATA_SIZE_UDP;
         break;
 
@@ -468,13 +505,13 @@ unsigned int RS9110_UART::Send (unsigned char socketId, ESocketType socketType, 
 
     /* Fill data after byte stuffing */
     unsigned int destSize = maxDataLen;
-    unsigned int hdr = strlen(_buffer);
-    sendLen = SendByteStuffing(&_buffer[strlen(_buffer)], destSize, data, dataSize);
+    unsigned int hdr = strlen(_outBuffer);
+    sendLen = SendByteStuffing(&_outBuffer[strlen(_outBuffer)], destSize, data, dataSize);
 
     /* End of Command */
-    _snprintf(&_buffer[hdr + destSize], sizeof(_buffer), "%s", CMD_END);
+    _snprintf(&_outBuffer[hdr + destSize], sizeof(_outBuffer), "%s", CMD_END);
 
-	bRtn = _persistor->Write((unsigned char *) _buffer, (hdr + destSize + strlen(CMD_END)));
+	bRtn = _persistor->Write((unsigned char *) _outBuffer, (hdr + destSize + strlen(CMD_END)));
 
 	_lastCommand = ((bRtn == true) ? CMD_SEND_DATA : CMD_MAX);
 	
@@ -562,13 +599,17 @@ void RS9110_UART::ProcessResponseType (const char *message)
     {
         _responseType = RESP_TYPE_READ;
     }
-    else if (strstr(message, CMD_RESP_CLOSE) == message)
+    else if(strstr(message, CMD_RESP_CLOSE) == message)
     {
         _responseType = RESP_TYPE_CLOSE;
     }
+	else if(strstr(message, CMD_RESP_SLEEP) == message)
+	{
+		_responseType = RESP_TYPE_SLEEP;
+	}
     else
     {
-        _responseType = RESP_TYPE_UNKNOWN;
+        _responseType = RESP_TYPE_MAX;
     }
 }
 
@@ -579,7 +620,7 @@ inline bool RS9110_UART::IsValidSocketId (unsigned char socketId)
 }
 
 
-bool RS9110_UART::IsValidLocalTcpPort (unsigned short port)
+inline bool RS9110_UART::IsValidLocalTcpPort (unsigned short port)
 {
     return ((port >= MIN_TCP_SOCKET_PORT) && (port <= MAX_TCP_SOCKET_PORT));
 }
@@ -590,9 +631,9 @@ bool RS9110_UART::GenericCommand (ECommand command)
     bool bRtn;
 
 
-    _snprintf_s(_buffer, sizeof(_buffer), "%s%s", COMMAND[command], CMD_END);
+    _snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%s", COMMAND[command], CMD_END);
 
-    bRtn = _persistor->Write((unsigned char *) _buffer, strlen(_buffer));
+    bRtn = _persistor->Write((unsigned char *) _outBuffer, strlen(_outBuffer));
 
     _lastCommand = ((bRtn == true) ? command : CMD_MAX);
 
@@ -605,9 +646,9 @@ bool RS9110_UART::GenericCommandInt (ECommand command, int value)
     bool bRtn;
 
 
-    _snprintf_s(_buffer, sizeof(_buffer), "%s%d%s", COMMAND[command], value, CMD_END);
+    _snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%d%s", COMMAND[command], value, CMD_END);
 
-    bRtn = _persistor->Write((unsigned char *) _buffer, strlen(_buffer));
+    bRtn = _persistor->Write((unsigned char *) _outBuffer, strlen(_outBuffer));
 
     _lastCommand = ((bRtn == true) ? command : CMD_MAX);
 
@@ -620,9 +661,9 @@ bool RS9110_UART::GenericCommandStr (ECommand command, const char *str)
     bool bRtn;
 
 
-    _snprintf_s(_buffer, sizeof(_buffer), "%s%s%s", COMMAND[command], str, CMD_END);
+    _snprintf_s(_outBuffer, sizeof(_outBuffer), "%s%s%s", COMMAND[command], str, CMD_END);
 
-    bRtn = _persistor->Write((unsigned char *) _buffer, strlen(_buffer));
+    bRtn = _persistor->Write((unsigned char *) _outBuffer, strlen(_outBuffer));
 
     _lastCommand = ((bRtn == true) ? command : CMD_MAX);
 
@@ -652,8 +693,6 @@ static bool IsValidString (const char *string, int maxLen)
 
 	return bRtn;
 }
-
-
 
 
 static unsigned int SendByteStuffing (char *destination, unsigned int &dstSize, const char *source, unsigned int srcSize)
