@@ -27,6 +27,12 @@ CPPUNIT_TEST_SUITE(RS9110_UART_Test);
     CPPUNIT_TEST(JoinTest);
     CPPUNIT_TEST(DisassociateTest);
 
+	CPPUNIT_TEST(PowerModeTest);
+	CPPUNIT_TEST(KeepSleepingTest);
+	CPPUNIT_TEST(SetSleepTimerTest);
+
+  	CPPUNIT_TEST(SetFeatureSelectTest);
+
     CPPUNIT_TEST(IPConfigurationTest);
     CPPUNIT_TEST(OpenTcpSocketTest);
     CPPUNIT_TEST(OpenListeningUdpSocketTest);
@@ -74,7 +80,11 @@ public:
     void JoinTest ();
     void DisassociateTest ();
 
-    /*! @todo Sleep Modes */
+    void PowerModeTest ();
+	void KeepSleepingTest ();
+	void SetSleepTimerTest ();
+
+    void SetFeatureSelectTest ();
 
     void IPConfigurationTest ();
     void OpenTcpSocketTest ();
