@@ -9,20 +9,20 @@
 class RS9110_UART_Test : public CPPUNIT_NS::TestFixture
 {
 CPPUNIT_TEST_SUITE(RS9110_UART_Test);
-    //CPPUNIT_TEST(ProcessMessageTest);
+    CPPUNIT_TEST(ProcessMessageTest);
 
     CPPUNIT_TEST(SendBandTest);
     CPPUNIT_TEST(SendInitTest);
     CPPUNIT_TEST(GetNumScanResultsTest);
     CPPUNIT_TEST(SetNumScanResultsTest);
-    /*! @todo Passive Scan Test */
+    CPPUNIT_TEST(PassiveScanTest);
     CPPUNIT_TEST(ScanTest);
     CPPUNIT_TEST(NextScanTest);
     CPPUNIT_TEST(GetMACOfAPsTest);
     CPPUNIT_TEST(GetNetworkTypeTest);
     CPPUNIT_TEST(SetNetworkTypeTest);
     CPPUNIT_TEST(PSKTest);
-    /*! @todo Set WEP keys */
+    CPPUNIT_TEST(SetWEPKeysTest);
     CPPUNIT_TEST(AuthModeTest);
     CPPUNIT_TEST(JoinTest);
     CPPUNIT_TEST(DisassociateTest);
@@ -68,14 +68,14 @@ public:
     void SendInitTest ();
     void GetNumScanResultsTest ();
     void SetNumScanResultsTest ();
-    /*! @todo Passive Scan Test */
+    void PassiveScanTest ();
     void ScanTest ();
     void NextScanTest ();
     void GetMACOfAPsTest ();
     void GetNetworkTypeTest ();
     void SetNetworkTypeTest ();
     void PSKTest ();
-    /*! @todo Set WEP keys */
+    void SetWEPKeysTest ();
     void AuthModeTest ();
     void JoinTest ();
     void DisassociateTest ();

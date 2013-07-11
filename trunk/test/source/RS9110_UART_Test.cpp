@@ -55,20 +55,37 @@ void RS9110_UART_Test::ProcessMessageTest ()
     bool bRtn;
 
 
-    bRtn = rs->ProcessMessage("OK\r\n");
+    bRtn = rs->ProcessMessage("OK\r\n", 4);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_OK);
     CPPUNIT_ASSERT(rs->GetErrorCode() == RS9110_UART::ERROR_NONE);
+    CPPUNIT_ASSERT(rs->GetResponse(NULL) == 0);
 
-    bRtn = rs->ProcessMessage("ERROR‡\r\n");
+    bRtn = rs->ProcessMessage("ERROR\x87\r\n", 8);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_ERROR);
     CPPUNIT_ASSERT(rs->GetErrorCode() == RS9110_UART::ERROR_NO_EXIST_TCP_SERVER);
+    CPPUNIT_ASSERT(rs->GetResponse(NULL) == 0);
 
-    //! @todo RESP_TYPE_READ
+    bRtn = rs->ProcessMessage("AT+RSI_READ14\x00\xC0\xA8\x01\x01\x41\x1F abcd\r\n", 27);
+    CPPUNIT_ASSERT(bRtn == true);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_READ);
+    CPPUNIT_ASSERT(rs->GetResponse(NULL) == 14);
+    
+    bRtn = rs->ProcessMessage("AT+RSI_CLOSE\r\n", 11);
+    CPPUNIT_ASSERT(bRtn == true);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_CLOSE);
+    CPPUNIT_ASSERT(rs->GetResponse(NULL) == 0);
 
-    bRtn = rs->ProcessMessage("UNKNOWN\r\n");
+    bRtn = rs->ProcessMessage("SLEEP\r\n", 7);
+    CPPUNIT_ASSERT(bRtn == true);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_SLEEP);
+    CPPUNIT_ASSERT(rs->GetResponse(NULL) == 0);
+
+    bRtn = rs->ProcessMessage("UNKNOWN\r\n", 9);
     CPPUNIT_ASSERT(bRtn == false);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
+    CPPUNIT_ASSERT(rs->GetResponse(NULL) == -1);
 }
 
 
@@ -81,6 +98,7 @@ void RS9110_UART_Test::SendBandTest ()
     CPPUNIT_ASSERT(bRtn == true);
     CompareStream("AT+RSI_BAND=0\r\n");
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_BAND);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
     bRtn = rs->Band(RS9110_UART::BAND_5_GHZ);
     CPPUNIT_ASSERT(bRtn == true);
@@ -89,6 +107,7 @@ void RS9110_UART_Test::SendBandTest ()
     bRtn = rs->Band(RS9110_UART::BAND_MAX);
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 }
 
 
@@ -100,6 +119,7 @@ void RS9110_UART_Test::SendInitTest ()
     bRtn = rs->Init();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_INIT);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_INIT\r\n");
 }
 
@@ -112,6 +132,7 @@ void RS9110_UART_Test::GetNumScanResultsTest ()
     bRtn = rs->GetNumScanResults();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_GET_SCAN_RESULTS);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_NUMSCAN?\r\n");
 }
 
@@ -124,6 +145,7 @@ void RS9110_UART_Test::SetNumScanResultsTest ()
     bRtn = rs->SetNumScanResults(0);
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
     bRtn = rs->SetNumScanResults(11);
     CPPUNIT_ASSERT(bRtn == false);
@@ -131,7 +153,21 @@ void RS9110_UART_Test::SetNumScanResultsTest ()
     bRtn = rs->SetNumScanResults(10);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_SET_SCAN_RESULTS);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_NUMSCAN=10\r\n");
+}
+
+
+void RS9110_UART_Test::PassiveScanTest ()
+{
+    bool bRtn;
+
+
+    bRtn = rs->PassiveScan(9);
+    CPPUNIT_ASSERT(bRtn == true);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_PASSIVE_SCAN);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
+    CompareStream("AT+RSI_PASSSCAN=9\r\n");
 }
 
 
@@ -143,7 +179,8 @@ void RS9110_UART_Test::ScanTest ()
     bRtn = rs->Scan(6);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_SCAN);
-    CompareStream("AT+RSI_SCAN=6\r\n");
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
+    CompareStream("AT+RSI_SCAN=7\r\n");
 
     bRtn = rs->Scan(12, "Redpine_net");
     CPPUNIT_ASSERT(bRtn == true);
@@ -160,6 +197,7 @@ void RS9110_UART_Test::ScanTest ()
     bRtn = rs->Scan(0, "012345678901234567890123456789012");
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 }
 
 
@@ -171,6 +209,7 @@ void RS9110_UART_Test::NextScanTest ()
     bRtn = rs->NextScan();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_NEXT_SCAN);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_NEXTSCAN\r\n");
 }
 
@@ -183,6 +222,7 @@ void RS9110_UART_Test::GetMACOfAPsTest ()
     bRtn = rs->GetMACOfAPs();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_GET_MAC_APS);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_BSSID?\r\n");
 }
 
@@ -195,6 +235,7 @@ void RS9110_UART_Test::GetNetworkTypeTest ()
     bRtn = rs->GetNetworkType();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_GET_NETWORK_TYPE);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_NWTYPE?\r\n");
 }
 
@@ -207,6 +248,7 @@ void RS9110_UART_Test::SetNetworkTypeTest ()
     bRtn = rs->SetNetworkType(RS9110_UART::NW_TYPE_INFRASTRUCTURE);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_SET_NETWORK_TYPE);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_NETWORK=INFRASTRUCTURE\r\n");
     
     bRtn = rs->SetNetworkType(RS9110_UART::NW_TYPE_INFRASTRUCTURE, RS9110_UART::IBSS_TYPE_JOINER, 0);
@@ -239,6 +281,7 @@ void RS9110_UART_Test::PSKTest ()
     bRtn = rs->PSK("a");
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_PSK);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_PSK=a\r\n");
 
     bRtn = rs->PSK("012345678901234567890123456789012345678901234567890123456789012");
@@ -248,12 +291,46 @@ void RS9110_UART_Test::PSKTest ()
     bRtn = rs->PSK("0123456789012345678901234567890123456789012345678901234567890123");
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
     bRtn = rs->PSK("");
     CPPUNIT_ASSERT(bRtn == false);
 
     bRtn = rs->PSK(NULL);
     CPPUNIT_ASSERT(bRtn == false);
+}
+
+
+void RS9110_UART_Test::SetWEPKeysTest ()
+{
+    bool bRtn;
+
+
+    bRtn = rs->SetWEPKeys(2, "ABCDE12345", "ABCDE12346", "ABCDE12347");
+    CPPUNIT_ASSERT(bRtn == true);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_WEP_KEYS);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
+    CompareStream("AT+RSI_WEP_KEYS=2,ABCDE12345,ABCDE12346,ABCDE12347\r\n");
+
+    bRtn = rs->SetWEPKeys(2, NULL, "ABCDE12346", "ABCDE12347");
+    CPPUNIT_ASSERT(bRtn == false);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
+
+    bRtn = rs->SetWEPKeys(2, "ABCDE12345", NULL, "ABCDE12347");
+    CPPUNIT_ASSERT(bRtn == false);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
+
+    bRtn = rs->SetWEPKeys(2, "ABCDE12345", "ABCDE12346", NULL);
+    CPPUNIT_ASSERT(bRtn == false);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
+
+    bRtn = rs->SetWEPKeys(4, "ABCDE12345", "ABCDE12346", "ABCDE12347");
+    CPPUNIT_ASSERT(bRtn == false);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 }
 
 
@@ -265,6 +342,7 @@ void RS9110_UART_Test::AuthModeTest ()
     bRtn = rs->AuthMode(RS9110_UART::AUTH_MODE_WEP_OPEN);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_AUTH_MODE);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_AUTHMODE=0\r\n");
 
     bRtn = rs->AuthMode(RS9110_UART::AUTH_MODE_WEP_SHARED);
@@ -293,6 +371,7 @@ void RS9110_UART_Test::JoinTest ()
     bRtn = rs->Join("Redpine", RS9110_UART::TX_RATE_54, RS9110_UART::TX_POWER_MEDIUM);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_JOIN);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_JOIN=Redpine,12,1\r\n");
 
     bRtn = rs->Join("01234567890123456789012345678901", RS9110_UART::TX_RATE_AUTO, RS9110_UART::TX_POWER_HIGH);
@@ -302,6 +381,7 @@ void RS9110_UART_Test::JoinTest ()
     bRtn = rs->Join("012345678901234567890123456789012", RS9110_UART::TX_RATE_48, RS9110_UART::TX_POWER_LOW);
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
     bRtn = rs->Join("", RS9110_UART::TX_RATE_54, RS9110_UART::TX_POWER_MEDIUM);
     CPPUNIT_ASSERT(bRtn == false);
@@ -319,6 +399,7 @@ void RS9110_UART_Test::DisassociateTest ()
     bRtn = rs->Disassociate();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_DISASSOCIATE);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_DISASSOC\r\n");
 }
 
@@ -331,6 +412,7 @@ void RS9110_UART_Test::PowerModeTest ()
 	bRtn = rs->PowerMode(RS9110_UART::PW_MODE_0);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_POWER_MODE);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_PWMODE=0\r\n");
 
 	bRtn = rs->PowerMode(RS9110_UART::PW_MODE_1);
@@ -353,6 +435,7 @@ void RS9110_UART_Test::KeepSleepingTest ()
 	bRtn = rs->KeepSleeping();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_KEEP_SLEEPING);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("ACK\r\n");
 }
 
@@ -365,14 +448,17 @@ void RS9110_UART_Test::SetSleepTimerTest ()
 	bRtn = rs->SetSleepTimer(0);
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
 	bRtn = rs->SetSleepTimer(10001);
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
 	bRtn = rs->SetSleepTimer(168);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_SLEEP_TIMER);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_SLEEPTIMER=168\r\n");
 }
 
@@ -381,11 +467,15 @@ void RS9110_UART_Test::SetFeatureSelectTest ()
 {
     bool bRtn;
 
+    RS9110_UART::TFeatureSelect featSel;
+    featSel.value = 0;
+    featSel.authModeRelevance = 1;
 
-    bRtn = rs->SetFeatureSelect(1024);
+    bRtn = rs->SetFeatureSelect(featSel);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_FEATURE_SELECT);
-    CompareStream("AT+RSI_FEAT_SEL=1024\r\n");
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
+    CompareStream("AT+RSI_FEAT_SEL=2048\r\n");
 }
 
 
@@ -397,6 +487,7 @@ void RS9110_UART_Test::IPConfigurationTest ()
     bRtn = rs->IPConfiguration(RS9110_UART::DHCP_MANUAL, "", "", "");
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
     bRtn = rs->IPConfiguration(RS9110_UART::DHCP_MANUAL, NULL, NULL, NULL);
     CPPUNIT_ASSERT(bRtn == false);
@@ -404,11 +495,12 @@ void RS9110_UART_Test::IPConfigurationTest ()
     bRtn = rs->IPConfiguration(RS9110_UART::DHCP_MANUAL, "000.000.000.000", "111.111.111.111", "222.222.222.222");
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_IP_CONF);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_IPCONF=0,000.000.000.000,111.111.111.111,222.222.222.222\r\n");
 
     bRtn = rs->IPConfiguration(RS9110_UART::DHCP_DHCP, "", "", "");
     CPPUNIT_ASSERT(bRtn == true);
-    CompareStream("AT+RSI_IPCONF=1,0,0,0\r\n");
+    CompareStream("AT+RSI_IPCONF=1,0,0\r\n");
 
     bRtn = rs->IPConfiguration(RS9110_UART::DHCP_MAX, "", "", "");
     CPPUNIT_ASSERT(bRtn == false);
@@ -423,10 +515,12 @@ void RS9110_UART_Test::OpenTcpSocketTest ()
     bRtn = rs->OpenTcpSocket("", 5000, 5001);
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
     bRtn = rs->OpenTcpSocket(NULL, 5000, 5001);
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
     bRtn = rs->OpenTcpSocket("000.000.000.000", 5000, 1023);
     CPPUNIT_ASSERT(bRtn == false);
@@ -437,6 +531,7 @@ void RS9110_UART_Test::OpenTcpSocketTest ()
     bRtn = rs->OpenTcpSocket("000.000.000.000", 5000, 5001);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_OPEN_TCP_SOCKET);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_TCP=000.000.000.000,5000,5001\r\n");
 }
 
@@ -449,6 +544,7 @@ void RS9110_UART_Test::OpenListeningUdpSocketTest ()
     bRtn = rs->OpenListeningUdpSocket(0);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_OPEN_LUDP_SOCKET);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_LUDP=0\r\n");
 
     bRtn = rs->OpenListeningUdpSocket(65535);
@@ -465,6 +561,7 @@ void RS9110_UART_Test::OpenUdpSocketTest ()
     bRtn = rs->OpenUdpSocket("", 5000, 5001);
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
     bRtn = rs->OpenUdpSocket(NULL, 5000, 5001);
     CPPUNIT_ASSERT(bRtn == false);
@@ -472,6 +569,7 @@ void RS9110_UART_Test::OpenUdpSocketTest ()
     bRtn = rs->OpenUdpSocket("000.000.000.000", 8000, 1234);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_OPEN_UDP_SOCKET);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_UDP=000.000.000.000,8000,1234\r\n");
 }
 
@@ -484,6 +582,7 @@ void RS9110_UART_Test::OpenListeningTcpSocketTest ()
     bRtn = rs->OpenListeningTcpSocket(0);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_OPEN_LTCP_SOCKET);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_LTCP=0\r\n");
 
     bRtn = rs->OpenListeningTcpSocket(65535);
@@ -500,6 +599,7 @@ void RS9110_UART_Test::GetSocketStatusTest ()
     bRtn = rs->GetSocketStatus(0);
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
     bRtn = rs->GetSocketStatus(11);
     CPPUNIT_ASSERT(bRtn == false);
@@ -507,6 +607,7 @@ void RS9110_UART_Test::GetSocketStatusTest ()
     bRtn = rs->GetSocketStatus(1);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_GET_SOCKET_STATUS);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_CTCP=1\r\n");
 
     bRtn = rs->GetSocketStatus(7);
@@ -523,6 +624,7 @@ void RS9110_UART_Test::CloseSocketTest ()
     bRtn = rs->CloseSocket(0);
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
     bRtn = rs->CloseSocket(11);
     CPPUNIT_ASSERT(bRtn == false);
@@ -530,6 +632,7 @@ void RS9110_UART_Test::CloseSocketTest ()
     bRtn = rs->CloseSocket(1);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_CLOSE_SOCKET);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_CLS=1\r\n");
 
     bRtn = rs->CloseSocket(7);
@@ -573,6 +676,8 @@ void RS9110_UART_Test::SendTest ()
     data[11] = (char) 0xDB; data[12] = (char) 0xDD;
     data[13] = (char) 0x0D; data[14] = (char) 0x0A;
     memcpy(&result[hdrLen], data, 15);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_SEND_DATA);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream(result, (hdrLen + 15));
     
     for(int i = 0; i < RS9110_UART::MAX_SEND_DATA_SIZE_UDP; i++) data[i] = (char) 0xDB;
@@ -589,6 +694,8 @@ void RS9110_UART_Test::SendTest ()
 
     data[RS9110_UART::MAX_SEND_DATA_SIZE_UDP] = (char) 0x0D; data[RS9110_UART::MAX_SEND_DATA_SIZE_UDP + 1] = (char) 0x0A;
     memcpy(&result[hdrLen], data, RS9110_UART::MAX_SEND_DATA_SIZE_UDP + 2);
+    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_SEND_DATA);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream(result, (hdrLen + RS9110_UART::MAX_SEND_DATA_SIZE_UDP + 2));
     
     delete data;
@@ -604,6 +711,7 @@ void RS9110_UART_Test::GetDNSTest ()
     bRtn = rs->GetDNS("");
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 
     bRtn = rs->GetDNS(NULL);
     CPPUNIT_ASSERT(bRtn == false);
@@ -611,6 +719,7 @@ void RS9110_UART_Test::GetDNSTest ()
     bRtn = rs->GetDNS("www.google.com");
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_GET_DNS);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_DNSGET=www.google.com\r\n");
 }
 
@@ -623,6 +732,7 @@ void RS9110_UART_Test::GetFirmwareVersionTest ()
     bRtn = rs->GetFirmwareVersion();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_FW_VERSION);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_FWVERSION?\r\n");
 }
 
@@ -635,6 +745,7 @@ void RS9110_UART_Test::GetNetworkParametersTest ()
     bRtn = rs->GetNetworkParameters();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_GET_NETWORK_PARAMS);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_NWPARAMS?\r\n");
 }
 
@@ -647,6 +758,7 @@ void RS9110_UART_Test::ResetTest ()
     bRtn = rs->Reset();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_RESET);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_RESET\r\n");
 }
 
@@ -659,6 +771,7 @@ void RS9110_UART_Test::GetMACAddressTest ()
     bRtn = rs->GetMACAddress();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_GET_MAC);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_MAC?\r\n");
 }
 
@@ -671,6 +784,7 @@ void RS9110_UART_Test::GetRSSITest ()
     bRtn = rs->GetRSSI();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_GET_RSSI);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_RSSI?\r\n");
 }
 
@@ -683,6 +797,7 @@ void RS9110_UART_Test::SaveConfigurationTest ()
     bRtn = rs->SaveConfiguration();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_SAVE_CONFIG);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_CFGSAVE\r\n");
 }
 
@@ -695,16 +810,17 @@ void RS9110_UART_Test::ConfigurationTest ()
     bRtn = rs->Configuration(RS9110_UART::CONFIG_ENABLE);
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_ENABLE_CONFIG);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_CFGENABLE=1\r\n");
 
     bRtn = rs->Configuration(RS9110_UART::CONFIG_DISABLE);
     CPPUNIT_ASSERT(bRtn == true);
-    CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_ENABLE_CONFIG);
     CompareStream("AT+RSI_CFGENABLE=0\r\n");
 
     bRtn = rs->Configuration(RS9110_UART::CONFIG_MAX);
     CPPUNIT_ASSERT(bRtn == false);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_MAX);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
 }
 
 
@@ -716,5 +832,6 @@ void RS9110_UART_Test::GetConfigurationTest ()
     bRtn = rs->GetConfiguration();
     CPPUNIT_ASSERT(bRtn == true);
     CPPUNIT_ASSERT(rs->GetLastCommand() == RS9110_UART::CMD_GET_CONFIG);
+    CPPUNIT_ASSERT(rs->GetResponseType() == RS9110_UART::RESP_TYPE_MAX);
     CompareStream("AT+RSI_CFGGET?\r\n");
 }
