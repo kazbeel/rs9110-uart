@@ -5,6 +5,8 @@
 
 #if defined (WIN32)
 #include <stddef.h>
+#elif defined (AVR32)
+#include <stddef.h>
 #endif /* WIN32 */
 
 
@@ -19,6 +21,7 @@ public:
     static const unsigned short MAX_SEND_DATA_SIZE_TCP  = 1460;
 	static const unsigned char	MIN_SOCKET_HANDLE		= 1;
 	static const unsigned char	MAX_SOCKET_HANDLE		= 7;
+	static const unsigned char	MAX_NUMBER_SOCKETS	    = 7;
 	static const unsigned short	MIN_TCP_SOCKET_PORT		= 1024;
 	static const unsigned short MAX_TCP_SOCKET_PORT		= 49151;
 	static const unsigned int	MAX_BUFFER_SIZE			= 1520;
@@ -26,6 +29,8 @@ public:
     static const unsigned char  MAC_ADDRESS_LEN         = 6;
     static const unsigned char  NW_ADDRESS_LEN          = 4;
     static const unsigned int   MAX_SLEEP_TIME_MS		= 10000;
+    static const unsigned int   MAX_NUM_WEP_KEYS		= 3;
+    static const unsigned int   MAX_LEN_WEP_KEYS		= 32;
 
     /* ENUMS */
     enum ECommand
@@ -34,12 +39,14 @@ public:
         CMD_INIT,
         CMD_GET_SCAN_RESULTS,
         CMD_SET_SCAN_RESULTS,
+        CMD_PASSIVE_SCAN,
         CMD_SCAN,
         CMD_NEXT_SCAN,
         CMD_GET_MAC_APS,
         CMD_GET_NETWORK_TYPE,
         CMD_SET_NETWORK_TYPE,
         CMD_PSK,
+        CMD_WEP_KEYS,
         CMD_AUTH_MODE,
         CMD_JOIN,
 		CMD_DISASSOCIATE,
@@ -79,9 +86,63 @@ public:
 
     enum EErrorCode
     {
-        ERROR_NONE = 0,
-        ERROR_NO_EXIST_TCP_SERVER = 0x87,
-        ERROR_MAX
+        ERROR_NONE                  = 0x00,
+        ERROR_WAIT_CONN             = 0xFF,
+        ERROR_SKT_NOT_AVAILABLE     = 0xFE,
+        ERROR_DEAUTH_FROM_AP        = 0xFD,
+        ERROR_ILLEGAL_PARAMS        = 0xFC,
+        ERROR_TCPIP_CONF_FAIL       = 0xFB,
+        ERROR_INVALID_SKT           = 0xFA,
+        ERROR_ASSOC_NOT_DONE        = 0xF9,
+        ERROR_COMMAND               = 0xF8,
+        ERROR_BYTE_STUFFING         = 0xF7,
+        ERROR_IP_EXPIRED            = 0xF6,
+        ERROR_TCP_CONN_CLOSED       = 0xF5,
+        ERROR_KEY_INVALID_CHARS     = 0xF4,
+        ERROR_NO_AP_PRESENT         = 0xF3,
+        ERROR_MULTIPLE_1            = 0xF2,
+        ERROR_MULTIPLE_2            = 0xF1,
+        ERROR_DHCP_FAIL             = 0xF0,
+        ERROR_BAUD_RATE             = 0xEF,
+        ERROR_ENCRYP_MODE           = 0xEE,
+        ERROR_CHANNEL               = 0xED,
+        ERROR_NO_NW                 = 0xEC,
+        ERROR_AUTH                  = 0xEB,
+        ERROR_REJOIN                = 0xEA,
+        ERROR_COUNTRY_INFO          = 0xE9,
+        ERROR_PSK                   = 0xE8,
+        ERROR_NW_TYPE               = 0xE7,
+        ERROR_BKG_SCAN_CANCELLED    = 0xE6,
+        ERROR_FEATURE_SELECT        = 0xE4,
+        ERROR_SCAN                  = 0xE3,
+        ERROR_TX_RATE               = 0xE2,
+        ERROR_RSSI_IBSS             = 0xC8,
+        ERROR_RSSI_UNASSOC          = 0xC9,
+        ERROR_CMD_TOO_FAST          = 0xC5,
+        ERROR_REPLY_WITHOUT_IP      = 0xBB,
+        ERROR_DNS_CLASS             = 0xBA,
+        ERROR_MULTIPLE_QUERIES      = 0xB8,
+        ERROR_REPLY_WITH_ERROR      = 0xB7,
+        ERROR_REPLY_TRUNCATED       = 0xB6,
+        ERROR_REPLY_ID              = 0xB5,
+        ERROR_REPLY_TOO_SHORT       = 0xAB,
+        ERROR_IP_ADDRESS            = 0xA5,
+        ERROR_DNS_RESP_TIMEOUT      = 0xA4,
+        ERROR_SEND_ARP              = 0xA1,
+        ERROR_DHCP_HANDSHAKE        = 0x9C,
+        ERROR_CONN_DISRUPTION       = 0x8F,
+        ERROR_NO_EXIST_TCP_SERVER   = 0x87,
+        ERROR_CONN_FAIL             = 0x84,
+        ERROR_SKT_EXISTS            = 0x81,
+        ERROR_TOO_MANY_SKT          = 0x80,
+        ERROR_DHCP_MODE             = 0x7D,
+        ERROR_LTCP_SKT              = 0x2D,
+        ERROR_CONFIG                = 0x01,
+        ERROR_AUTH_MODE             = 0x19,
+        ERROR_KEEP_ALIVE_TIMEOUT    = 0x33,
+        ERROR_SEND_DATA_TOO_FAST    = 0x40,
+        ERROR_PAYLOAD_TOO_LONG      = 0x41,
+        ERROR_PAYLOAD_EMPTY         = 0x42,
     };
 
     enum EBand
@@ -123,6 +184,55 @@ public:
         AUTH_MODE_WPA2,
         AUTH_MODE_OPEN,
         AUTH_MODE_MAX
+    };
+
+    enum EChannel24GHz
+    {
+        CHANNEL_24_ALL = 0,
+        CHANNEL_24_1,
+        CHANNEL_24_2,
+        CHANNEL_24_3,
+        CHANNEL_24_4,
+        CHANNEL_24_5,
+        CHANNEL_24_6,
+        CHANNEL_24_7,
+        CHANNEL_24_8,
+        CHANNEL_24_9,
+        CHANNEL_24_10,
+        CHANNEL_24_11,
+        CHANNEL_24_12,
+        CHANNEL_24_13,
+        CHANNEL_24_MAX
+    };
+
+    enum EChannel5GHz
+    {
+        CHANNEL_5_ALL = 0,
+        CHANNEL_5_36,
+        CHANNEL_5_40,
+        CHANNEL_5_44,
+        CHANNEL_5_48,
+        CHANNEL_5_52,
+        CHANNEL_5_56,
+        CHANNEL_5_60,
+        CHANNEL_5_64,
+        CHANNEL_5_100,
+        CHANNEL_5_104,
+        CHANNEL_5_108,
+        CHANNEL_5_112,
+        CHANNEL_5_116,
+        CHANNEL_5_120,
+        CHANNEL_5_124,
+        CHANNEL_5_128,
+        CHANNEL_5_132,
+        CHANNEL_5_136,
+        CHANNEL_5_140,
+        CHANNEL_5_149,
+        CHANNEL_5_153,
+        CHANNEL_5_157,
+        CHANNEL_5_161,
+        CHANNEL_5_165,
+        CHANNEL_5_MAX
     };
 
     enum ETxRate
@@ -198,6 +308,7 @@ public:
 		PW_MODE_MAX
 	};
 
+
     /* STRUCTURES */
 #pragma pack(push, 1)
     struct TNumScanResults
@@ -225,43 +336,89 @@ public:
 
     };
 
-#if 0
-	struct TFeatureSelect
+#if defined (WIN32)
+	union TFeatureSelect
 	{
-		unsigned int	bit31	            : 1;
-		unsigned int	bit30	            : 1;
-		unsigned int	bit29	            : 1;
-		unsigned int	bit28	            : 1;
-		unsigned int	bit27	            : 1;
-		unsigned int	bit26	            : 1;
-		unsigned int	bit25	            : 1;
-		unsigned int	bit24	            : 1;
-		unsigned int	bit23	            : 1;
-		unsigned int	bit22	            : 1;
-		unsigned int	bit21	            : 1;
-		unsigned int	bit20	            : 1;
-		unsigned int	bit19	            : 1;
-		unsigned int	bit18	            : 1;
-		unsigned int	bit17	            : 1;
-		unsigned int	bit16	            : 1;
-		unsigned int	bit15	            : 1;
-		unsigned int	bit14	            : 1;
-		unsigned int	bit13	            : 1;
-		unsigned int	bit12	            : 1;
-		unsigned int	authModeRelevance   : 1;
-		unsigned int	bit10	            : 1;
-		unsigned int	bit9	            : 1;
-		unsigned int	bit8	            : 1;
-		unsigned int	wepInConfig         : 1;
-		unsigned int	bit6	            : 1;
-		unsigned int	bit5	            : 1;
-		unsigned int	bit4	            : 1;
-		unsigned int	pskLength           : 1;
-		unsigned int	bit2	            : 1;
-		unsigned int	bit1	            : 1;
-		unsigned int	dnsServerAddr       : 1;
+        struct
+        {
+		    unsigned int	dnsServerAddr	    : 1;
+		    unsigned int	bit1	            : 1;
+		    unsigned int	bit2	            : 1;
+		    unsigned int	pskLength	        : 1;
+		    unsigned int	bit4                : 1;
+		    unsigned int	bit5	            : 1;
+		    unsigned int	bit6	            : 1;
+		    unsigned int	wepInConfig	        : 1;
+		    unsigned int	bit8	            : 1;
+		    unsigned int	bit9	            : 1;
+		    unsigned int	bit10	            : 1;
+		    unsigned int	authModeRelevance	: 1;
+		    unsigned int	bit12	            : 1;
+		    unsigned int	bit13	            : 1;
+		    unsigned int	bit14	            : 1;
+		    unsigned int	bit15	            : 1;
+		    unsigned int	bit16	            : 1;
+		    unsigned int	bit17	            : 1;
+		    unsigned int	bit18	            : 1;
+		    unsigned int	bit19	            : 1;
+		    unsigned int	bit20               : 1;
+		    unsigned int	bit21	            : 1;
+		    unsigned int	bit22	            : 1;
+		    unsigned int	bit23	            : 1;
+		    unsigned int	bit24               : 1;
+		    unsigned int	bit25	            : 1;
+		    unsigned int	bit26	            : 1;
+		    unsigned int	bit27	            : 1;
+		    unsigned int	bit28               : 1;
+		    unsigned int	bit29	            : 1;
+		    unsigned int	bit30	            : 1;
+		    unsigned int	bit31               : 1;
+        };
+
+        unsigned int        value;
 	};
-#endif
+#else
+	union TFeatureSelect
+	{
+        struct
+        {
+		    unsigned int	bit31	            : 1;
+		    unsigned int	bit30	            : 1;
+		    unsigned int	bit29	            : 1;
+		    unsigned int	bit28	            : 1;
+		    unsigned int	bit27	            : 1;
+		    unsigned int	bit26	            : 1;
+		    unsigned int	bit25	            : 1;
+		    unsigned int	bit24	            : 1;
+		    unsigned int	bit23	            : 1;
+		    unsigned int	bit22	            : 1;
+		    unsigned int	bit21	            : 1;
+		    unsigned int	bit20	            : 1;
+		    unsigned int	bit19	            : 1;
+		    unsigned int	bit18	            : 1;
+		    unsigned int	bit17	            : 1;
+		    unsigned int	bit16	            : 1;
+		    unsigned int	bit15	            : 1;
+		    unsigned int	bit14	            : 1;
+		    unsigned int	bit13	            : 1;
+		    unsigned int	bit12	            : 1;
+		    unsigned int	authModeRelevance   : 1;
+		    unsigned int	bit10	            : 1;
+		    unsigned int	bit9	            : 1;
+		    unsigned int	bit8	            : 1;
+		    unsigned int	wepInConfig         : 1;
+		    unsigned int	bit6	            : 1;
+		    unsigned int	bit5	            : 1;
+		    unsigned int	bit4	            : 1;
+		    unsigned int	pskLength           : 1;
+		    unsigned int	bit2	            : 1;
+		    unsigned int	bit1	            : 1;
+		    unsigned int	dnsServerAddr       : 1;
+        };
+
+        unsigned int        value;
+	};
+#endif /* WIN32 */
 
     struct TIPConfig
     {
@@ -288,7 +445,6 @@ public:
         unsigned char   ignore;
     };
 
-    /*! @todo Fill something for READ? */
     struct TRead
     {
         unsigned char   socketId;
@@ -301,21 +457,22 @@ public:
     struct TDNSGet
     {
         unsigned char   numIPs;
-        unsigned char   address1[NW_ADDRESS_LEN];
-        unsigned char   address2[NW_ADDRESS_LEN];
-        unsigned char   address3[NW_ADDRESS_LEN];
-        unsigned char   address4[NW_ADDRESS_LEN];
-        unsigned char   address5[NW_ADDRESS_LEN];
-        unsigned char   address6[NW_ADDRESS_LEN];
-        unsigned char   address7[NW_ADDRESS_LEN];
-        unsigned char   address8[NW_ADDRESS_LEN];
-        unsigned char   address9[NW_ADDRESS_LEN];
-        unsigned char   address10[NW_ADDRESS_LEN];
+        unsigned char   address[10][NW_ADDRESS_LEN];
     };
 
     struct TFWVersion
     {
         char            version[5];
+    };
+
+    struct TSocketDetails
+    {
+        unsigned char   id;
+        unsigned char   type;
+        unsigned short  srcPort;                    /*! @note Big endian */
+        unsigned short  dstPort;                    /*! @note Big endian */
+        unsigned char   dstAddress[NW_ADDRESS_LEN];
+
     };
 
     struct TNetworkParams
@@ -330,17 +487,8 @@ public:
         unsigned char   subnet[NW_ADDRESS_LEN];
         unsigned char   gateway[NW_ADDRESS_LEN];
         unsigned char   numOpenSockets;
-        /*!note Socket Details. As many as numOpenSockets indicates. */
-    };
-
-    struct TSocketDetails
-    {
-        unsigned char   id;
-        unsigned char   type;
-        unsigned short  srcPort;                    /*! @note Big endian */
-        unsigned short  dstPort;                    /*! @note Big endian */
-        unsigned char   dstAddress[NW_ADDRESS_LEN];
-
+        /* Socket Details. As many as numOpenSockets indicates. */
+        TSocketDetails  socketDetails[MAX_NUMBER_SOCKETS];
     };
 
     struct TMACAddress
@@ -362,21 +510,17 @@ public:
         unsigned char   dataRate;
         unsigned char   powerLevel;
         char            psk[MAX_PSK_LEN + 1];
-        unsigned char   ssid[MAX_SSID_LEN];
+        char            ssid[MAX_SSID_LEN];
         unsigned char   reserved;
         unsigned char   dhcp;
         unsigned char   address[NW_ADDRESS_LEN];
         unsigned char   subnet[NW_ADDRESS_LEN];
         unsigned char   gateway[NW_ADDRESS_LEN];
         unsigned char   featureSelect[4];
-        /*! @note WEP Configuration only if Bit[7] of "Feature Select" is set to 1. */
-    };
-
-    struct TWEPConfig
-    {
+        /* WEP Configuration only if Bit[7] of "Feature Select" is set to 1. */
         unsigned char   authMode;
         unsigned char   index;
-        unsigned char   keys[96];
+        unsigned char   keys[MAX_NUM_WEP_KEYS][MAX_LEN_WEP_KEYS];
     };
 #pragma pack(pop)
 
@@ -388,9 +532,10 @@ public:
     void            SetPersistor            (IPersistor *persistor);
     IPersistor *    GetPersistor            ();
 
-    bool            ProcessMessage (char *message);
+    bool            ProcessMessage          (char *message, int size);
 
     ECommand        GetLastCommand          ();
+    int             GetResponse             (void *respBuffer);
     EResponseType   GetResponseType         ();
     EErrorCode      GetErrorCode            ();
 
@@ -398,25 +543,25 @@ public:
     bool            Init                    ();
     bool            GetNumScanResults       ();
     bool            SetNumScanResults       (unsigned char value);
-    /*! @todo Passive Scan */
+    bool            PassiveScan             (unsigned int channels);
     bool            Scan                    (unsigned char channel, const char *ssid = NULL);
     bool            NextScan                ();
     bool            GetMACOfAPs             ();
     bool            GetNetworkType          ();
     bool            SetNetworkType          (ENetworkType eNWType, EIBSSType eIBSSType = IBSS_TYPE_MAX, unsigned char channel = 0);
     bool            PSK                     (const char *psk);
-    /*! @todo Set WEP Key */
+    bool            SetWEPKeys              (unsigned char keyIndex, char *key2, char *key3, char *key4);
     bool            AuthMode                (EAuthMode eAuthMode);
     bool            Join                    (const char *ssid, ETxRate eTxRate, ETxPower eTxPower);
 	bool            Disassociate            ();
-    
+
 	bool			PowerMode				(EPowerMode powerMode);
 	bool			KeepSleeping			();
 	bool			SetSleepTimer			(unsigned int milliseconds);
 
-	bool			SetFeatureSelect		(unsigned int value);
+	bool			SetFeatureSelect		(TFeatureSelect value);
 
-    bool            IPConfiguration         (EDHCPMode eDHCPMode, const char *ipAddr, const char *subNetwork, const char *gateway);
+    bool            IPConfiguration         (EDHCPMode eDHCPMode, const char *ipAddr = NULL, const char *subNetwork = NULL, const char *gateway = NULL);
 	bool            OpenTcpSocket           (const char *hostIpAddr, unsigned short targetPort, unsigned short localPort);
     bool            OpenListeningUdpSocket  (unsigned short localPort);
     bool            OpenUdpSocket           (const char *hostIpAddr, unsigned short targetPort, unsigned short localPort);
@@ -440,6 +585,7 @@ public:
 private:
 
     /* METHODS */
+    void SetLastCommand         (ECommand command, bool isTransmitted = false);
     void ProcessResponseType    (const char *message);
     bool IsValidSocketId        (unsigned char socketId);
     bool IsValidLocalTcpPort    (unsigned short port);
@@ -450,7 +596,8 @@ private:
 
     /* VARIABLES */
     IPersistor     *_persistor;
-    char            _outBuffer[MAX_BUFFER_SIZE];
+    char            _buffer[MAX_BUFFER_SIZE];
+    int             _responseLength;
     ECommand        _lastCommand;
     EResponseType   _responseType;
     EErrorCode      _errorCode;
