@@ -45,15 +45,15 @@
         </option>
         <option>
           <name>ExePath</name>
-          <state>Debug\Exe</state>
+          <state>..\..\lib\AVR32\UC3C0\Debug\Exe</state>
         </option>
         <option>
           <name>ObjPath</name>
-          <state>Debug\Obj</state>
+          <state>..\..\lib\AVR32\UC3C0\Debug\Obj</state>
         </option>
         <option>
           <name>ListPath</name>
-          <state>Debug\List</state>
+          <state>..\..\lib\AVR32\UC3C0\Debug\List</state>
         </option>
         <option>
           <name>GRuntimeLibSelect</name>
@@ -1193,7 +1193,7 @@
         <option>
           <name>CCOptStrategy</name>
           <version>0</version>
-          <state>0</state>
+          <state>1</state>
         </option>
         <option>
           <name>CCOptLevelSlave</name>
