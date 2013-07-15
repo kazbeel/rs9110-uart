@@ -67,7 +67,6 @@ static const char *CMD_RESP_READ    = "AT+RSI_READ";
 static const char *CMD_RESP_CLOSE   = "AT+RSI_CLOSE";
 static const char *CMD_RESP_SLEEP   = "SLEEP";
 
-//static const char *CMD_ACK			= "ACK";
 static const char *CMD_END          = "\r\n";
 
 static const unsigned char CMD_RESP_OK_LEN      = strlen(CMD_RESP_OK);
@@ -175,7 +174,7 @@ bool RS9110_UART::ProcessMessage (char *message, int size)
     bool bRtn = true;
 
 
-    if(strstr(&message[size - 2], CMD_END) == NULL)
+    if(memcmp(&message[size - 2], CMD_END, CMD_END_LEN) != 0)
     {
         _responseLength = -1;
         return false;
@@ -279,14 +278,46 @@ RS9110_UART::ECommand RS9110_UART::GetLastCommand ()
 }
 
 
-int RS9110_UART::GetResponse (void *respBuffer)
+void * RS9110_UART::GetResponse (int &responseLength)
 {
-    if((respBuffer != NULL) && (_responseType != RESP_TYPE_MAX))
+    responseLength = _responseLength;
+
+    if(_responseType != RESP_TYPE_MAX)
     {
-        respBuffer = _buffer;
+        return _buffer;
     }
 
-    return _responseLength;
+    return NULL;
+}
+
+
+void RS9110_UART::Read (TReadUDP &readUDP)
+{
+    TReadUDP *tmp = (TReadUDP *) _buffer;
+
+
+    if(_responseType == RESP_TYPE_READ)
+    {
+        readUDP.socketId   = tmp->socketId;
+        readUDP.size       = tmp->size;
+        memcpy(&readUDP.address, &tmp->address, sizeof(readUDP.address));
+        readUDP.srcPort    = tmp->srcPort;
+        readUDP.data       = &_buffer[sizeof(TReadUDP) - sizeof(readUDP.data)];
+    }
+}
+
+
+void RS9110_UART::Read (TReadTCP &readTCP)
+{
+    TReadTCP *tmp = (TReadTCP *) _buffer;
+
+
+    if(_responseType == RESP_TYPE_READ)
+    {
+        readTCP.socketId   = tmp->socketId;
+        readTCP.size       = tmp->size;
+        readTCP.data       = &_buffer[sizeof(readTCP) - sizeof(readTCP.data)];
+    }
 }
 
 
@@ -578,7 +609,7 @@ bool RS9110_UART::SetNetworkType (ENetworkType eNWType, EIBSSType eIBSSType, uns
  */
 bool RS9110_UART::PSK (const char *psk)
 {
-    if(IsValidString(psk, MAX_PSK_LEN) == false)
+    if(IsValidString(psk, MAX_PSK_LEN_EXT) == false)
     {
         SetLastCommand(CMD_MAX);
         return false;
