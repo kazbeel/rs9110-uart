@@ -16,7 +16,8 @@ public:
 
     /* CONSTANTS */
     static const unsigned char  MAX_SSID_LEN			= 32;
-    static const unsigned char  MAX_PSK_LEN				= 63;
+    static const unsigned char  MAX_PSK_LEN			    = 32;
+    static const unsigned char  MAX_PSK_LEN_EXT			= 63;
     static const unsigned short MAX_SEND_DATA_SIZE_UDP	= 1472;
     static const unsigned short MAX_SEND_DATA_SIZE_TCP  = 1460;
 	static const unsigned char	MIN_SOCKET_HANDLE		= 1;
@@ -31,6 +32,9 @@ public:
     static const unsigned int   MAX_SLEEP_TIME_MS		= 10000;
     static const unsigned int   MAX_NUM_WEP_KEYS		= 3;
     static const unsigned int   MAX_LEN_WEP_KEYS		= 32;
+    static const unsigned int   MAX_LEN_DOMAIN_NAME		= 134;
+    static const unsigned int   MAX_DNSGET_RESP		    = 10;
+
 
     /* ENUMS */
     enum ECommand
@@ -300,6 +304,15 @@ public:
         NW_TYPE_RSP_MAX
     };
 
+    enum  ESecurityModeResp
+    {
+        SEC_MODE_RSP_OPEN = 0,
+        SEC_MODE_RSP_WPA,
+        SEC_MODE_RSP_WPA2,
+        SEC_MODE_RSP_WEP,
+        SEC_MODE_RSP_MAX
+    };
+
 	enum EPowerMode
 	{
 		PW_MODE_0 = 0,
@@ -445,7 +458,7 @@ public:
         unsigned char   ignore;
     };
 
-    struct TRead
+    struct TReadUDP
     {
         unsigned char   socketId;
         unsigned short  size;
@@ -454,10 +467,17 @@ public:
         char           *data;
     };
 
+    struct TReadTCP
+    {
+        unsigned char   socketId;
+        unsigned short  size;
+        char           *data;
+    };
+
     struct TDNSGet
     {
         unsigned char   numIPs;
-        unsigned char   address[10][NW_ADDRESS_LEN];
+        unsigned char   address[MAX_DNSGET_RESP][NW_ADDRESS_LEN];
     };
 
     struct TFWVersion
@@ -487,8 +507,23 @@ public:
         unsigned char   subnet[NW_ADDRESS_LEN];
         unsigned char   gateway[NW_ADDRESS_LEN];
         unsigned char   numOpenSockets;
-        /* Socket Details. As many as numOpenSockets indicates. */
         TSocketDetails  socketDetails[MAX_NUMBER_SOCKETS];
+    };
+
+    struct TNetworkParamsExt
+    {
+        char            ssid[MAX_SSID_LEN];
+        unsigned char   secMode;
+        char            psk[MAX_PSK_LEN_EXT];
+        unsigned char   channel;
+        unsigned char   mac[MAC_ADDRESS_LEN];
+        unsigned char   dhcpMode;
+        unsigned char   address[NW_ADDRESS_LEN];
+        unsigned char   subnet[NW_ADDRESS_LEN];
+        unsigned char   gateway[NW_ADDRESS_LEN];
+        unsigned char   numOpenSockets;
+        TSocketDetails  socketDetails[MAX_NUMBER_SOCKETS];
+        /*! @todo Improve this structure. DNS_Server_Address is still missing. Best way to do it? */
     };
 
     struct TMACAddress
@@ -503,21 +538,25 @@ public:
 
     struct TStoredConfig
     {
-        unsigned char   isValid;
+        unsigned short  isValid;    /*! @note Small Endian */
         unsigned char   channel;
         unsigned char   nwType;
         unsigned char   secMode;
         unsigned char   dataRate;
         unsigned char   powerLevel;
-        char            psk[MAX_PSK_LEN + 1];
+        char            psk[MAX_PSK_LEN_EXT + 1];
         char            ssid[MAX_SSID_LEN];
-        unsigned char   reserved;
+        unsigned char   reserved[3];
         unsigned char   dhcp;
         unsigned char   address[NW_ADDRESS_LEN];
         unsigned char   subnet[NW_ADDRESS_LEN];
         unsigned char   gateway[NW_ADDRESS_LEN];
         unsigned char   featureSelect[4];
         /* WEP Configuration only if Bit[7] of "Feature Select" is set to 1. */
+    };
+
+    struct TStoredConfigWEP
+    {
         unsigned char   authMode;
         unsigned char   index;
         unsigned char   keys[MAX_NUM_WEP_KEYS][MAX_LEN_WEP_KEYS];
@@ -535,7 +574,9 @@ public:
     bool            ProcessMessage          (char *message, int size);
 
     ECommand        GetLastCommand          ();
-    int             GetResponse             (void *respBuffer);
+    void *          GetResponse             (int &responseLength);
+    void            Read                    (TReadUDP &readUDP);
+    void            Read                    (TReadTCP &readTCP);
     EResponseType   GetResponseType         ();
     EErrorCode      GetErrorCode            ();
 
