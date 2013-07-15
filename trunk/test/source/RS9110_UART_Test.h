@@ -10,6 +10,7 @@ class RS9110_UART_Test : public CPPUNIT_NS::TestFixture
 {
 CPPUNIT_TEST_SUITE(RS9110_UART_Test);
     CPPUNIT_TEST(ProcessMessageTest);
+    CPPUNIT_TEST(GetResponseTest);
 
     CPPUNIT_TEST(SendBandTest);
     CPPUNIT_TEST(SendInitTest);
@@ -63,6 +64,7 @@ public:
     void CompareStream (const char *stream, unsigned int size = 0);
 
     void ProcessMessageTest ();
+    void GetResponseTest ();
 
     void SendBandTest ();
     void SendInitTest ();
